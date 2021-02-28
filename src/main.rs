@@ -1,23 +1,14 @@
 use nannou::image;
 use nannou::prelude::*;
 
-const MAX_DIST: f64 = 200.0;
+const MAX_DIST: f64 = 300.0;
 const NUM_POINTS: usize = 20;
+const NTH_CLOSEST: usize = 1;
 
 fn distance(a: &Vector2<f64>, b: &Vector2<f64>) -> f64 {
     let x = b.x - a.x;
     let y = b.y - a.y;
     (x.powi(2) + y.powi(2)).sqrt()
-}
-
-fn closer(origin: Vector2<f64>, pt1: Vector2<f64>, pt2: Vector2<f64>) -> Vector2<f64> {
-    let dist1 = distance(&origin, &pt1);
-    let dist2 = distance(&origin, &pt2);
-    if dist2 > dist1 {
-        pt1.to_owned()
-    } else {
-        pt2.to_owned()
-    }
 }
 
 struct Model {
@@ -67,16 +58,13 @@ fn view(app: &App, model: &Model, frame: Frame) {
     // Update the texture using perlin
     let image = image::ImageBuffer::from_fn(win.w() as u32, win.h() as u32, |x, y| {
         let pt = vec2(x as f64, y as f64);
-        let closest = model
-            .points
-            .to_owned()
-            .into_iter()
-            .fold(None, |acc, curr| match acc {
-                None => Some(curr),
-                Some(acc) => Some(closer(pt, acc, curr)),
-            })
-            .expect("Could not get closest point");
-        let dist = clamp(distance(&pt, &closest), 0.0, MAX_DIST);
+        let mut sorted = model.points.to_owned();
+        sorted.sort_by(|a, b| {
+            let dist_a = distance(&pt, a);
+            let dist_b = distance(&pt, b);
+            dist_a.partial_cmp(&dist_b).unwrap()
+        });
+        let dist = clamp(distance(&pt, &sorted[NTH_CLOSEST]), 0.0, MAX_DIST);
         let alpha = map_range(dist, 0.0, MAX_DIST, 0, std::u8::MAX);
 
         nannou::image::Rgba([0, 0, 0, alpha])
