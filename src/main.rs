@@ -1,7 +1,7 @@
 use nannou::image;
 use nannou::prelude::*;
 
-const MAX_DIST: f64 = 300.0;
+const MAX_DIST: f64 = 340.0;
 const NUM_POINTS: usize = 20;
 const NTH_CLOSEST: usize = 1;
 
@@ -36,8 +36,8 @@ fn model(app: &App) -> Model {
     let points = (0..NUM_POINTS)
         .map(|_i| {
             Vector2::new(
-                random_range::<f64>(0.0, 800.0),
-                random_range::<f64>(0.0, 800.0),
+                random_range::<f64>(-200.0, 1000.0),
+                random_range::<f64>(-200.0, 1000.0),
             )
         })
         .collect::<Vec<Vector2<f64>>>();
