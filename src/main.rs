@@ -1,9 +1,29 @@
-use nannou::prelude::*;
 use nannou::image;
+use nannou::prelude::*;
+
+const MAX_DIST: f64 = 200.0;
+const NUM_POINTS: usize = 20;
+
+fn distance(a: &Vector2<f64>, b: &Vector2<f64>) -> f64 {
+    let x = b.x - a.x;
+    let y = b.y - a.y;
+    (x.powi(2) + y.powi(2)).sqrt()
+}
+
+fn closer(origin: Vector2<f64>, pt1: Vector2<f64>, pt2: Vector2<f64>) -> Vector2<f64> {
+    let dist1 = distance(&origin, &pt1);
+    let dist2 = distance(&origin, &pt2);
+    if dist2 > dist1 {
+        pt1.to_owned()
+    } else {
+        pt2.to_owned()
+    }
+}
 
 struct Model {
     _window: WindowId,
-    texture: wgpu::Texture
+    texture: wgpu::Texture,
+    points: Vec<Vector2<f64>>,
 }
 
 fn main() {
@@ -22,7 +42,20 @@ fn model(app: &App) -> Model {
         .usage(wgpu::TextureUsage::COPY_DST | wgpu::TextureUsage::SAMPLED)
         .build(window.swap_chain_device());
 
-    Model { _window, texture }
+    let points = (0..NUM_POINTS)
+        .map(|_i| {
+            Vector2::new(
+                random_range::<f64>(0.0, 800.0),
+                random_range::<f64>(0.0, 800.0),
+            )
+        })
+        .collect::<Vec<Vector2<f64>>>();
+
+    Model {
+        _window,
+        texture,
+        points,
+    }
 }
 
 fn update(_app: &App, _model: &mut Model, _update: Update) {}
@@ -32,8 +65,21 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let win = app.window_rect();
 
     // Update the texture using perlin
-    let image = image::ImageBuffer::from_fn(win.w() as u32, win.h() as u32, |_x, _y| {
-        nannou::image::Rgba([0, 100, 255, std::u8::MAX])
+    let image = image::ImageBuffer::from_fn(win.w() as u32, win.h() as u32, |x, y| {
+        let pt = vec2(x as f64, y as f64);
+        let closest = model
+            .points
+            .to_owned()
+            .into_iter()
+            .fold(None, |acc, curr| match acc {
+                None => Some(curr),
+                Some(acc) => Some(closer(pt, acc, curr)),
+            })
+            .expect("Could not get closest point");
+        let dist = clamp(distance(&pt, &closest), 0.0, MAX_DIST);
+        let alpha = map_range(dist, 0.0, MAX_DIST, 0, std::u8::MAX);
+
+        nannou::image::Rgba([0, 0, 0, alpha])
     });
 
     let flat_samples = image.as_flat_samples();
